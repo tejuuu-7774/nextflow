@@ -4,16 +4,13 @@ import FlowCanvas from "@/components/canvas/FlowCanvas";
 
 export default function BuilderPage() {
   return (
-    <div className="h-screen w-full flex overflow-hidden">
-      {/* Left Sidebar */}
+    <div className="h-screen w-screen flex">
       <Sidebar />
 
-      {/* Center Canvas */}
-      <div className="flex-1 bg-[#0b0b0b]">
+      <div className="flex-1 min-w-0">
         <FlowCanvas />
       </div>
 
-      {/* Right Panel */}
       <RightPanel />
     </div>
   );

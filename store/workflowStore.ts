@@ -81,10 +81,10 @@ export const useWorkflowStore = create<WorkflowState>((set, get) => ({
     })),
 
   runWorkflow: async () => {
+    console.log("RUN WORKFLOW CLICKED");
     const { nodes, edges, updateNodeData } = get();
 
     for (const node of nodes) {
-      // 🔥 set running
       updateNodeData(node.id, { status: "running" });
 
       await new Promise((res) => setTimeout(res, 600));

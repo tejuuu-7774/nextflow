@@ -11,13 +11,11 @@ import { useWorkflowStore } from "@/store/workflowStore";
 import { nodeTypes } from "./nodeTypes";
 
 export default function FlowCanvas() {
-  const {
-    nodes,
-    edges,
-    onNodesChange,
-    onEdgesChange,
-    onConnect,
-  } = useWorkflowStore();
+  const nodes = useWorkflowStore((s) => s.nodes);
+  const edges = useWorkflowStore((s) => s.edges);
+  const onNodesChange = useWorkflowStore((s) => s.onNodesChange);
+  const onEdgesChange = useWorkflowStore((s) => s.onEdgesChange);
+  const onConnect = useWorkflowStore((s) => s.onConnect);
 
   return (
     <div className="h-full w-full">

@@ -13,10 +13,11 @@ const nodeList: { label: string; type: NodeType }[] = [
 ];
 
 export default function Sidebar() {
-  const addNode = useWorkflowStore((state) => state.addNode);
+  const addNode = useWorkflowStore((s) => s.addNode);
+  const runWorkflow = useWorkflowStore((s) => s.runWorkflow);
 
   return (
-    <div className="w-64 bg-[#111] border-r border-gray-800 p-4">
+    <aside className="w-64 h-full shrink-0 border-r border-gray-800 bg-[#111] p-4">
       <h2 className="text-lg font-semibold mb-4">Nodes</h2>
 
       <div className="space-y-2">
@@ -30,6 +31,13 @@ export default function Sidebar() {
           </button>
         ))}
       </div>
-    </div>
+
+      <button
+        onClick={runWorkflow}
+        className="w-full mt-4 bg-green-600 hover:bg-green-500 transition p-2 rounded text-sm font-semibold"
+      >
+        ▶ Run Workflow
+      </button>
+    </aside>
   );
 }
