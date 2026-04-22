@@ -1,4 +1,5 @@
 // /store/workflowStore.ts
+import { NodeType } from "@/types/nodeTypes";
 import { create } from "zustand";
 import {
   Node,
@@ -21,6 +22,7 @@ type WorkflowState = {
 
   setNodes: (nodes: Node[]) => void;
   setEdges: (edges: Edge[]) => void;
+  addNode: (type: NodeType) => void;
 };
 
 export const useWorkflowStore = create<WorkflowState>((set, get) => ({
@@ -44,4 +46,24 @@ export const useWorkflowStore = create<WorkflowState>((set, get) => ({
     set({
       edges: addEdge(connection, get().edges),
     }),
+
+    addNode: (type) => {
+        const id = `${type}-${Date.now()}`;
+
+        const newNode: Node = {
+            id,
+            type: "default",
+            position: {
+              x: Math.random() * 400 + 100,
+              y: Math.random() * 400 + 100,
+            },
+            data: {
+              label: type.toUpperCase(),
+            },
+          };
+
+          set((state) => ({
+            nodes: [...state.nodes, newNode],
+          }));
+    },
 }));

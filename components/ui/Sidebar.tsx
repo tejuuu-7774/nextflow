@@ -1,15 +1,34 @@
+"use client";
+
+import { useWorkflowStore } from "@/store/workflowStore";
+import { NodeType } from "@/types/nodeTypes";
+
+const nodeList: { label: string; type: NodeType }[] = [
+  { label: "Text", type: "text" },
+  { label: "Image", type: "image" },
+  { label: "Video", type: "video" },
+  { label: "LLM", type: "llm" },
+  { label: "Crop", type: "crop" },
+  { label: "Frame", type: "frame" },
+];
+
 export default function Sidebar() {
+  const addNode = useWorkflowStore((state) => state.addNode);
+
   return (
     <div className="w-64 bg-[#111] border-r border-gray-800 p-4">
       <h2 className="text-lg font-semibold mb-4">Nodes</h2>
 
       <div className="space-y-2">
-        <button className="w-full bg-gray-800 p-2 rounded">Text</button>
-        <button className="w-full bg-gray-800 p-2 rounded">Image</button>
-        <button className="w-full bg-gray-800 p-2 rounded">Video</button>
-        <button className="w-full bg-gray-800 p-2 rounded">LLM</button>
-        <button className="w-full bg-gray-800 p-2 rounded">Crop</button>
-        <button className="w-full bg-gray-800 p-2 rounded">Frame</button>
+        {nodeList.map((node) => (
+          <button
+            key={node.type}
+            onClick={() => addNode(node.type)}
+            className="w-full bg-gray-800 hover:bg-gray-700 transition p-2 rounded text-left"
+          >
+            {node.label}
+          </button>
+        ))}
       </div>
     </div>
   );
