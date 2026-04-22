@@ -1,3 +1,6 @@
+import "reactflow/dist/style.css";
+import "./globals.css";
+
 export default function RootLayout({
   children,
 }: {
@@ -5,7 +8,7 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en">
-      <body>{children}</body>
+      <body className="h-screen w-screen overflow-hidden">{children}</body>
     </html>
   );
 }
