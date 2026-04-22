@@ -52,7 +52,7 @@ export const useWorkflowStore = create<WorkflowState>((set, get) => ({
 
         const newNode: Node = {
             id,
-            type: "default",
+            type,
             position: {
               x: Math.random() * 400 + 100,
               y: Math.random() * 400 + 100,

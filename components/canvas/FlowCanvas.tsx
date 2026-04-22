@@ -1,4 +1,3 @@
-// /components/canvas/FlowCanvas.tsx
 "use client";
 
 import ReactFlow, {
@@ -9,6 +8,7 @@ import ReactFlow, {
 import "reactflow/dist/style.css";
 
 import { useWorkflowStore } from "@/store/workflowStore";
+import { nodeTypes } from "./nodeTypes";
 
 export default function FlowCanvas() {
   const {
@@ -27,6 +27,7 @@ export default function FlowCanvas() {
         onNodesChange={onNodesChange}
         onEdgesChange={onEdgesChange}
         onConnect={onConnect}
+        nodeTypes={nodeTypes}
         fitView
       >
         <Background gap={20} size={1} color="#1a1a1a" />
