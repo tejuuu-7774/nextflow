@@ -6,7 +6,4 @@ export const nodeTypes = {
   text: TextNode,
   image: ImageNode,
   llm: LLMNode,
-  video: TextNode,
-  crop: TextNode,
-  frame: TextNode,
 };

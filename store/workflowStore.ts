@@ -11,11 +11,13 @@ import {
   EdgeChange,
 } from "reactflow";
 import { getExecutionLevels } from "@/lib/execution/topologicalLevels";
+import { WorkflowRun, NodeExecution } from "@/types/workFlow";
 
 type WorkflowState = {
   nodes: Node[];
   edges: Edge[];
   error: string | null;
+  history: WorkflowRun[];
 
   onNodesChange: (changes: NodeChange[]) => void;
   onEdgesChange: (changes: EdgeChange[]) => void;
@@ -26,12 +28,19 @@ type WorkflowState = {
 
   runWorkflow: () => Promise<void>;
   setError: (msg: string | null) => void;
+  addRun: (run: WorkflowRun) => void;
 };
 
 export const useWorkflowStore = create<WorkflowState>((set, get) => ({
   nodes: [],
   edges: [],
   error: null,
+  history: [],
+
+  addRun: (run) =>
+    set((state) => ({
+      history: [run, ...state.history],
+    })),
 
   setError: (msg) => set({ error: msg }),
   onNodesChange: (changes) =>
@@ -85,38 +94,48 @@ export const useWorkflowStore = create<WorkflowState>((set, get) => ({
       ),
     })),
 
-    runWorkflow: async () => {
-      console.log("RUN WORKFLOW PARALLEL");
+  runWorkflow: async () => {
+    const { nodes, edges, updateNodeData, setError, addRun } = get();
 
-      const { nodes, edges, updateNodeData, setError } = get();
+    setError(null);
 
-      setError(null);
+    let levels: string[][] = [];
 
-      let levels: string[][] = [];
+    try {
+      levels = getExecutionLevels(nodes, edges);
+    } catch {
+      setError("Cycle detected! Fix your connections.");
+      return;
+    }
 
-      try {
-        levels = getExecutionLevels(nodes, edges);
-      } catch{
-        setError("Cycle detected! Fix your connections.");
-        return;
-      }
+    const nodeMap = Object.fromEntries(nodes.map((n) => [n.id, n]));
+    const results: Record<string, NodeData> = {};
 
-      const nodeMap = Object.fromEntries(nodes.map((n) => [n.id, n]));
-      const results: Record<string, NodeData> = {};
+    const runId = `run-${Date.now()}`;
+    const runStart = Date.now();
 
-      // runs level by level
+    const nodeExecutions: Record<string, NodeExecution> = {};
+
+    try {
       for (const level of levels) {
-        console.log("LEVEL START:", level);
         await Promise.all(
-          
           level.map(async (nodeId) => {
             const node = nodeMap[nodeId];
-            
-            console.log("START:", nodeId);
+
+            const start = Date.now();
+
+            nodeExecutions[nodeId] = {
+              id: nodeId,
+              type: node.type!,
+              status: "running",
+              startedAt: start,
+            };
 
             updateNodeData(nodeId, { status: "running" });
 
-            await new Promise((res) => setTimeout(res, 800));
+            await new Promise((res) =>
+              setTimeout(res, 500 + Math.random() * 1000)
+            );
 
             let output = "";
 
@@ -138,15 +157,40 @@ export const useWorkflowStore = create<WorkflowState>((set, get) => ({
 
             results[nodeId] = { output, text: output };
 
+            nodeExecutions[nodeId] = {
+              ...nodeExecutions[nodeId],
+              status: "success",
+              output,
+              endedAt: Date.now(),
+            };
+
             updateNodeData(nodeId, {
               status: "success",
               output,
             });
-
-            console.log("END:", nodeId);
           })
         );
-        console.log("LEVEL DONE:", level);
       }
+
+      const runEnd = Date.now();
+
+      addRun({
+        id: runId,
+        timestamp: runStart,
+        status: "success",
+        duration: runEnd - runStart,
+        nodes: Object.values(nodeExecutions),
+      });
+
+    } catch {
+      addRun({
+        id: runId,
+        timestamp: runStart,
+        status: "failed",
+        nodes: Object.values(nodeExecutions),
+      });
+
+      setError("Execution failed");
     }
+  }
 }));
