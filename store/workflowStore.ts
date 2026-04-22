@@ -10,7 +10,7 @@ import {
   NodeChange,
   EdgeChange,
 } from "reactflow";
-import { topologicalSort } from "@/lib/execution/topologicalSort";
+import { getExecutionLevels } from "@/lib/execution/topologicalLevels";
 
 type WorkflowState = {
   nodes: Node[];
@@ -85,59 +85,68 @@ export const useWorkflowStore = create<WorkflowState>((set, get) => ({
       ),
     })),
 
-  runWorkflow: async () => {
-      set({ error: "Cycle detected!" });
-      
-      setTimeout(() => {
-        set({ error: null });
-      }, 3000);
+    runWorkflow: async () => {
+      console.log("RUN WORKFLOW PARALLEL");
 
-      const { nodes, edges, updateNodeData } = get();
+      const { nodes, edges, updateNodeData, setError } = get();
 
-      let order: string[] = [];
+      setError(null);
+
+      let levels: string[][] = [];
 
       try {
-        order = topologicalSort(nodes, edges);
+        levels = getExecutionLevels(nodes, edges);
       } catch{
-        set({ error: "Cycle detected! Fix your connections." });
+        setError("Cycle detected! Fix your connections.");
         return;
       }
 
       const nodeMap = Object.fromEntries(nodes.map((n) => [n.id, n]));
-
       const results: Record<string, NodeData> = {};
 
-      for (const nodeId of order) {
-        const node = nodeMap[nodeId];
+      // runs level by level
+      for (const level of levels) {
+        console.log("LEVEL START:", level);
+        await Promise.all(
+          
+          level.map(async (nodeId) => {
+            const node = nodeMap[nodeId];
+            
+            console.log("START:", nodeId);
 
-        updateNodeData(nodeId, { status: "running" });
+            updateNodeData(nodeId, { status: "running" });
 
-        await new Promise((res) => setTimeout(res, 600));
+            await new Promise((res) => setTimeout(res, 800));
 
-        let output = "";
+            let output = "";
 
-        if (node.type === "text") {
-          output = (node.data as NodeData).text || "";
-        }
+            if (node.type === "text") {
+              output = (node.data as NodeData).text || "";
+            }
 
-        if (node.type === "llm") {
-          const inputs = edges
-            .filter((e) => e.target === nodeId)
-            .map((e) => results[e.source]);
+            if (node.type === "llm") {
+              const inputs = edges
+                .filter((e) => e.target === nodeId)
+                .map((e) => results[e.source]);
 
-          const inputText = inputs
-            ?.map((d) => d?.text || "")
-            .join(" ");
+              const inputText = inputs
+                ?.map((d) => d?.text || "")
+                .join(" ");
 
-          output = `AI Response: ${inputText}`;
-        }
+              output = `AI Response: ${inputText}`;
+            }
 
-        results[nodeId] = { output, text: output };
+            results[nodeId] = { output, text: output };
 
-        updateNodeData(nodeId, {
-          status: "success",
-          output,
-        });
+            updateNodeData(nodeId, {
+              status: "success",
+              output,
+            });
+
+            console.log("END:", nodeId);
+          })
+        );
+        console.log("LEVEL DONE:", level);
       }
-    },
+    }
 }));
