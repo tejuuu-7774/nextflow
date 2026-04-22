@@ -15,6 +15,7 @@ const nodeList: { label: string; type: NodeType }[] = [
 export default function Sidebar() {
   const addNode = useWorkflowStore((s) => s.addNode);
   const runWorkflow = useWorkflowStore((s) => s.runWorkflow);
+  const error = useWorkflowStore((s) => s.error);
 
   return (
     <aside className="w-64 h-full shrink-0 border-r border-gray-800 bg-[#111] p-4">
@@ -38,6 +39,12 @@ export default function Sidebar() {
       >
         ▶ Run Workflow
       </button>
+      
+      {error && (
+        <div className="mt-4 text-sm bg-red-500/20 text-red-400 p-2 rounded border border-red-500/30">
+          ⚠ {error}
+        </div>
+      )}
     </aside>
   );
 }

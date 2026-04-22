@@ -10,10 +10,12 @@ import {
   NodeChange,
   EdgeChange,
 } from "reactflow";
+import { topologicalSort } from "@/lib/execution/topologicalSort";
 
 type WorkflowState = {
   nodes: Node[];
   edges: Edge[];
+  error: string | null;
 
   onNodesChange: (changes: NodeChange[]) => void;
   onEdgesChange: (changes: EdgeChange[]) => void;
@@ -23,12 +25,15 @@ type WorkflowState = {
   updateNodeData: (id: string, data: Partial<NodeData>) => void;
 
   runWorkflow: () => Promise<void>;
+  setError: (msg: string | null) => void;
 };
 
 export const useWorkflowStore = create<WorkflowState>((set, get) => ({
   nodes: [],
   edges: [],
+  error: null,
 
+  setError: (msg) => set({ error: msg }),
   onNodesChange: (changes) =>
     set({
       nodes: applyNodeChanges(changes, get().nodes),
@@ -81,39 +86,58 @@ export const useWorkflowStore = create<WorkflowState>((set, get) => ({
     })),
 
   runWorkflow: async () => {
-    console.log("RUN WORKFLOW CLICKED");
-    const { nodes, edges, updateNodeData } = get();
+      set({ error: "Cycle detected!" });
+      
+      setTimeout(() => {
+        set({ error: null });
+      }, 3000);
 
-    for (const node of nodes) {
-      updateNodeData(node.id, { status: "running" });
+      const { nodes, edges, updateNodeData } = get();
 
-      await new Promise((res) => setTimeout(res, 600));
+      let order: string[] = [];
 
-      let output = "";
-
-      if (node.type === "text") {
-        output = (node.data as NodeData).text || "";
+      try {
+        order = topologicalSort(nodes, edges);
+      } catch{
+        set({ error: "Cycle detected! Fix your connections." });
+        return;
       }
 
-      if (node.type === "llm") {
-        const inputs = edges
-          .filter((e) => e.target === node.id)
-          .map((e) =>
-            nodes.find((n) => n.id === e.source)?.data
-          );
+      const nodeMap = Object.fromEntries(nodes.map((n) => [n.id, n]));
 
-        const inputText = inputs
-          ?.map((d) => (d as NodeData)?.text || "")
-          .join(" ");
+      const results: Record<string, NodeData> = {};
 
-        output = `AI Response: ${inputText}`;
+      for (const nodeId of order) {
+        const node = nodeMap[nodeId];
+
+        updateNodeData(nodeId, { status: "running" });
+
+        await new Promise((res) => setTimeout(res, 600));
+
+        let output = "";
+
+        if (node.type === "text") {
+          output = (node.data as NodeData).text || "";
+        }
+
+        if (node.type === "llm") {
+          const inputs = edges
+            .filter((e) => e.target === nodeId)
+            .map((e) => results[e.source]);
+
+          const inputText = inputs
+            ?.map((d) => d?.text || "")
+            .join(" ");
+
+          output = `AI Response: ${inputText}`;
+        }
+
+        results[nodeId] = { output, text: output };
+
+        updateNodeData(nodeId, {
+          status: "success",
+          output,
+        });
       }
-
-      // set to success
-      updateNodeData(node.id, {
-        status: "success",
-        output,
-      });
-    }
-  },
+    },
 }));
