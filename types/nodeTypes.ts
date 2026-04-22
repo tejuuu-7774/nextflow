@@ -5,3 +5,10 @@ export type NodeType =
   | "llm"
   | "crop"
   | "frame";
+
+export type NodeData = {
+  label?: string;
+  text?: string;
+  system?: string;
+  user?: string;
+};
