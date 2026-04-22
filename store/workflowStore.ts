@@ -12,23 +12,27 @@ import {
 } from "reactflow";
 import { getExecutionLevels } from "@/lib/execution/topologicalLevels";
 import { WorkflowRun, NodeExecution } from "@/types/workFlow";
+import { getUpstreamNodes } from "@/lib/execution/getUpstreamNodes";
 
 type WorkflowState = {
   nodes: Node[];
   edges: Edge[];
   error: string | null;
   history: WorkflowRun[];
-
+  selectedNodeId: string | null;
+  
   onNodesChange: (changes: NodeChange[]) => void;
   onEdgesChange: (changes: EdgeChange[]) => void;
   onConnect: (connection: Connection) => void;
-
+  
   addNode: (type: NodeType) => void;
   updateNodeData: (id: string, data: Partial<NodeData>) => void;
-
+  
   runWorkflow: () => Promise<void>;
   setError: (msg: string | null) => void;
   addRun: (run: WorkflowRun) => void;
+
+  setSelectedNode: (id: string | null) => void;
 };
 
 export const useWorkflowStore = create<WorkflowState>((set, get) => ({
@@ -36,6 +40,9 @@ export const useWorkflowStore = create<WorkflowState>((set, get) => ({
   edges: [],
   error: null,
   history: [],
+  selectedNodeId: null,
+
+  setSelectedNode: (id) => set({ selectedNodeId: id }),
 
   addRun: (run) =>
     set((state) => ({
@@ -95,20 +102,46 @@ export const useWorkflowStore = create<WorkflowState>((set, get) => ({
     })),
 
   runWorkflow: async () => {
-    const { nodes, edges, updateNodeData, setError, addRun } = get();
+    const { nodes, edges, updateNodeData, setError, addRun, selectedNodeId } = get();
 
     setError(null);
 
     let levels: string[][] = [];
 
+    // 🔥 STEP 1 — determine which nodes to execute
+    let executionNodeIds = nodes.map((n) => n.id);
+
+    if (selectedNodeId) {
+      const upstream = getUpstreamNodes(selectedNodeId, edges);
+
+      executionNodeIds = [
+        selectedNodeId,
+        ...Array.from(upstream),
+      ];
+    }
+
+    // 🔥 STEP 2 — filter nodes + edges
+    const filteredNodes = nodes.filter((n) =>
+      executionNodeIds.includes(n.id)
+    );
+
+    const filteredEdges = edges.filter(
+      (e) =>
+        executionNodeIds.includes(e.source) &&
+        executionNodeIds.includes(e.target)
+    );
+
     try {
-      levels = getExecutionLevels(nodes, edges);
+      levels = getExecutionLevels(filteredNodes, filteredEdges);
     } catch {
       setError("Cycle detected! Fix your connections.");
       return;
     }
 
-    const nodeMap = Object.fromEntries(nodes.map((n) => [n.id, n]));
+    const nodeMap = Object.fromEntries(
+      filteredNodes.map((n) => [n.id, n])
+    );
+
     const results: Record<string, NodeData> = {};
 
     const runId = `run-${Date.now()}`;
@@ -144,7 +177,7 @@ export const useWorkflowStore = create<WorkflowState>((set, get) => ({
             }
 
             if (node.type === "llm") {
-              const inputs = edges
+              const inputs = filteredEdges
                 .filter((e) => e.target === nodeId)
                 .map((e) => results[e.source]);
 

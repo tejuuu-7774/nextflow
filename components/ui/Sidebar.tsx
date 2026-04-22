@@ -16,6 +16,7 @@ export default function Sidebar() {
   const addNode = useWorkflowStore((s) => s.addNode);
   const runWorkflow = useWorkflowStore((s) => s.runWorkflow);
   const error = useWorkflowStore((s) => s.error);
+  const selectedNodeId = useWorkflowStore((s) => s.selectedNodeId);
 
   return (
     <aside className="w-64 h-full shrink-0 border-r border-gray-800 bg-[#111] p-4">
@@ -37,9 +38,9 @@ export default function Sidebar() {
         onClick={runWorkflow}
         className="w-full mt-4 bg-green-600 hover:bg-green-500 transition p-2 rounded text-sm font-semibold"
       >
-        ▶ Run Workflow
+        ▶ Run {selectedNodeId ? "Selected Node" : "Workflow"}
       </button>
-      
+            
       {error && (
         <div className="mt-4 text-sm bg-red-500/20 text-red-400 p-2 rounded border border-red-500/30">
           ⚠ {error}
