@@ -1,3 +1,5 @@
+"use client";
+
 import Sidebar from "@/components/ui/Sidebar";
 import RightPanel from "@/components/ui/RightPanel";
 import FlowCanvas from "@/components/canvas/FlowCanvas";

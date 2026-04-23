@@ -14,21 +14,21 @@ model Workflow {
   edges     Json
   createdAt DateTime @default(now())
 
-  runs      Run[]
+  runs      WorkflowRun[]
 }
 
-model Run {
-  id         String   @id @default(uuid())
-  workflowId String
-  status     String
-  duration   Int?
-  createdAt  DateTime @default(now())
+model WorkflowRun {
+  id          String   @id @default(uuid())
+  workflowId  String
+  status      String
+  duration    Int
+  createdAt   DateTime @default(now())
 
-  workflow   Workflow @relation(fields: [workflowId], references: [id])
-  nodeRuns   NodeRun[]
+  workflow    Workflow @relation(fields: [workflowId], references: [id])
+  executions  NodeExecution[]
 }
 
-model NodeRun {
+model NodeExecution {
   id        String   @id @default(uuid())
   runId     String
   nodeId    String
@@ -36,7 +36,7 @@ model NodeRun {
   status    String
   output    String?
   startedAt DateTime
-  endedAt   DateTime?
+  endedAt   DateTime
 
-  run       Run @relation(fields: [runId], references: [id])
+  run       WorkflowRun @relation(fields: [runId], references: [id])
 }

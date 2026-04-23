@@ -21,6 +21,8 @@ type WorkflowState = {
   error: string | null;
   history: WorkflowRun[];
   selectedNodeId: string | null;
+  currentWorkflowId: string | null;
+  setWorkflowId: (id: string) => void;
 
   onNodesChange: (changes: NodeChange[]) => void;
   onEdgesChange: (changes: EdgeChange[]) => void;
@@ -42,6 +44,9 @@ export const useWorkflowStore = create<WorkflowState>((set, get) => ({
   error: null,
   history: [],
   selectedNodeId: null,
+  currentWorkflowId: null,
+
+  setWorkflowId: (id) => set({ currentWorkflowId: id }),
 
   setSelectedNode: (id) => set({ selectedNodeId: id }),
 
@@ -104,18 +109,23 @@ export const useWorkflowStore = create<WorkflowState>((set, get) => ({
     })),
 
   runWorkflow: async () => {
-    const {
-      nodes,
-      edges,
-      updateNodeData,
-      setError,
-      addRun,
-      selectedNodeId,
-    } = get();
+      const {
+        nodes,
+        edges,
+        updateNodeData,
+        setError,
+        addRun,
+        selectedNodeId,
+        currentWorkflowId,
+      } = get();
 
-    setError(null);
+      setError(null);
 
-    // 🔥 STEP 1 — determine execution scope
+      if (!currentWorkflowId) {
+        setError("No workflow selected");
+        return;
+      }
+
     let executionNodeIds = nodes.map((n) => n.id);
 
     if (selectedNodeId) {
@@ -123,7 +133,6 @@ export const useWorkflowStore = create<WorkflowState>((set, get) => ({
       executionNodeIds = [selectedNodeId, ...Array.from(upstream)];
     }
 
-    // 🔥 STEP 2 — filter graph
     const filteredNodes = nodes.filter((n) =>
       executionNodeIds.includes(n.id)
     );
@@ -159,13 +168,13 @@ export const useWorkflowStore = create<WorkflowState>((set, get) => ({
         await Promise.all(
           level.map(async (nodeId) => {
             const node = nodeMap[nodeId];
+            if (!node || !node.type) return;
 
             const start = Date.now();
 
-            // 🔥 mark running
             nodeExecutions[nodeId] = {
               id: nodeId,
-              type: node.type!,
+              type: node.type,
               status: "running",
               startedAt: start,
             };
@@ -224,6 +233,23 @@ export const useWorkflowStore = create<WorkflowState>((set, get) => ({
       }
 
       const runEnd = Date.now();
+
+      try {
+        await fetch("http://localhost:3001/run", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            workflowId: get().currentWorkflowId,
+            status: "success",
+            duration: runEnd - runStart,
+            nodes: Object.values(nodeExecutions),
+          }),
+        });
+      } catch (err) {
+        console.error("Backend save failed:", err);
+      }
 
       addRun({
         id: runId,
