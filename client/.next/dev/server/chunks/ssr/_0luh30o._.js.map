@@ -1,7 +1,0 @@
-{
-  "version": 3,
-  "sources": [],
-  "sections": [
-    {"offset": {"line": 4, "column": 0}, "map": {"version":3,"sources":["file:///Users/palwaitejaswini/PROJECTS/Assignments/nextflow/client/app/layout.tsx"],"sourcesContent":["import \"reactflow/dist/style.css\";\nimport \"./globals.css\";\n\nexport default function RootLayout({\n  children,\n}: {\n  children: React.ReactNode;\n}) {\n  return (\n    <html lang=\"en\">\n      <body className=\"h-screen w-screen overflow-hidden\">{children}</body>\n    </html>\n  );\n}"],"names":["RootLayout","children","lang","className"],"mappings":";;;;;;;;AAGe,SAASA,WAAW,EACjCC,QAAQ,EAGT;IACC,qBACE,8OAAC;QAAKC,MAAK;kBACT,cAAA,8OAAC;YAAKC,WAAU;sBAAqCF;;;;;;;;;;;AAG3D"}},
-    {"offset": {"line": 37, "column": 0}, "map": {"version":3,"sources":["file:///Users/palwaitejaswini/PROJECTS/Assignments/nextflow/client/node_modules/next/src/server/route-modules/app-page/vendored/rsc/react-jsx-dev-runtime.ts"],"sourcesContent":["module.exports = (\n  require('../../module.compiled') as typeof import('../../module.compiled')\n).vendored['react-rsc']!.ReactJsxDevRuntime\n"],"names":["module","exports","require","vendored","ReactJsxDevRuntime"],"mappings":"AAAAA,OAAOC,OAAO,GACZC,QAAQ,4HACRC,QAAQ,CAAC,YAAY,CAAEC,kBAAkB","ignoreList":[0]}}]
-}
