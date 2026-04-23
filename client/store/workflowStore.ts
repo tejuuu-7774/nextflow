@@ -13,7 +13,7 @@ import {
 import { getExecutionLevels } from "@/lib/execution/topologicalLevels";
 import { WorkflowRun, NodeExecution } from "@/types/workFlow";
 import { getUpstreamNodes } from "@/lib/execution/getUpstreamNodes";
-import { runGemini } from "@/lib/integrations/gemini";
+import { runAI } from "@/lib/integrations/ai";
 
 type WorkflowState = {
   nodes: Node[];
@@ -188,9 +188,7 @@ export const useWorkflowStore = create<WorkflowState>((set, get) => ({
                   ?.map((d) => d?.text || "")
                   .join(" ");
 
-                output = await runGemini(
-                  inputText || "Say something useful"
-                );
+                output = await runAI(inputText || "Say something useful");
               }
 
               results[nodeId] = { output, text: output };
