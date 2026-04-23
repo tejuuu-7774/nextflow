@@ -13,6 +13,7 @@ import {
 import { getExecutionLevels } from "@/lib/execution/topologicalLevels";
 import { WorkflowRun, NodeExecution } from "@/types/workFlow";
 import { getUpstreamNodes } from "@/lib/execution/getUpstreamNodes";
+import { runGemini } from "@/lib/integrations/gemini";
 
 type WorkflowState = {
   nodes: Node[];
@@ -20,14 +21,14 @@ type WorkflowState = {
   error: string | null;
   history: WorkflowRun[];
   selectedNodeId: string | null;
-  
+
   onNodesChange: (changes: NodeChange[]) => void;
   onEdgesChange: (changes: EdgeChange[]) => void;
   onConnect: (connection: Connection) => void;
-  
+
   addNode: (type: NodeType) => void;
   updateNodeData: (id: string, data: Partial<NodeData>) => void;
-  
+
   runWorkflow: () => Promise<void>;
   setError: (msg: string | null) => void;
   addRun: (run: WorkflowRun) => void;
@@ -50,6 +51,7 @@ export const useWorkflowStore = create<WorkflowState>((set, get) => ({
     })),
 
   setError: (msg) => set({ error: msg }),
+
   onNodesChange: (changes) =>
     set({
       nodes: applyNodeChanges(changes, get().nodes),
@@ -102,25 +104,26 @@ export const useWorkflowStore = create<WorkflowState>((set, get) => ({
     })),
 
   runWorkflow: async () => {
-    const { nodes, edges, updateNodeData, setError, addRun, selectedNodeId } = get();
+    const {
+      nodes,
+      edges,
+      updateNodeData,
+      setError,
+      addRun,
+      selectedNodeId,
+    } = get();
 
     setError(null);
 
-    let levels: string[][] = [];
-
-    // 🔥 STEP 1 — determine which nodes to execute
+    // 🔥 STEP 1 — determine execution scope
     let executionNodeIds = nodes.map((n) => n.id);
 
     if (selectedNodeId) {
       const upstream = getUpstreamNodes(selectedNodeId, edges);
-
-      executionNodeIds = [
-        selectedNodeId,
-        ...Array.from(upstream),
-      ];
+      executionNodeIds = [selectedNodeId, ...Array.from(upstream)];
     }
 
-    // 🔥 STEP 2 — filter nodes + edges
+    // 🔥 STEP 2 — filter graph
     const filteredNodes = nodes.filter((n) =>
       executionNodeIds.includes(n.id)
     );
@@ -130,6 +133,8 @@ export const useWorkflowStore = create<WorkflowState>((set, get) => ({
         executionNodeIds.includes(e.source) &&
         executionNodeIds.includes(e.target)
     );
+
+    let levels: string[][] = [];
 
     try {
       levels = getExecutionLevels(filteredNodes, filteredEdges);
@@ -157,6 +162,7 @@ export const useWorkflowStore = create<WorkflowState>((set, get) => ({
 
             const start = Date.now();
 
+            // 🔥 mark running
             nodeExecutions[nodeId] = {
               id: nodeId,
               type: node.type!,
@@ -166,41 +172,55 @@ export const useWorkflowStore = create<WorkflowState>((set, get) => ({
 
             updateNodeData(nodeId, { status: "running" });
 
-            await new Promise((res) =>
-              setTimeout(res, 500 + Math.random() * 1000)
-            );
-
             let output = "";
 
-            if (node.type === "text") {
-              output = (node.data as NodeData).text || "";
+            try {
+              if (node.type === "text") {
+                output = (node.data as NodeData).text || "";
+              }
+
+              if (node.type === "llm") {
+                const inputs = filteredEdges
+                  .filter((e) => e.target === nodeId)
+                  .map((e) => results[e.source]);
+
+                const inputText = inputs
+                  ?.map((d) => d?.text || "")
+                  .join(" ");
+
+                output = await runGemini(
+                  inputText || "Say something useful"
+                );
+              }
+
+              results[nodeId] = { output, text: output };
+
+              nodeExecutions[nodeId] = {
+                ...nodeExecutions[nodeId],
+                status: "success",
+                output,
+                endedAt: Date.now(),
+              };
+
+              updateNodeData(nodeId, {
+                status: "success",
+                output,
+              });
+            } catch (err) {
+              console.error("Node failed:", nodeId, err);
+
+              nodeExecutions[nodeId] = {
+                ...nodeExecutions[nodeId],
+                status: "failed",
+                output: "Execution failed",
+                endedAt: Date.now(),
+              };
+
+              updateNodeData(nodeId, {
+                status: "error",
+                output: "Execution failed",
+              });
             }
-
-            if (node.type === "llm") {
-              const inputs = filteredEdges
-                .filter((e) => e.target === nodeId)
-                .map((e) => results[e.source]);
-
-              const inputText = inputs
-                ?.map((d) => d?.text || "")
-                .join(" ");
-
-              output = `AI Response: ${inputText}`;
-            }
-
-            results[nodeId] = { output, text: output };
-
-            nodeExecutions[nodeId] = {
-              ...nodeExecutions[nodeId],
-              status: "success",
-              output,
-              endedAt: Date.now(),
-            };
-
-            updateNodeData(nodeId, {
-              status: "success",
-              output,
-            });
           })
         );
       }
@@ -215,7 +235,9 @@ export const useWorkflowStore = create<WorkflowState>((set, get) => ({
         nodes: Object.values(nodeExecutions),
       });
 
-    } catch {
+    } catch (err) {
+      console.error("Workflow failed:", err);
+
       addRun({
         id: runId,
         timestamp: runStart,
@@ -225,5 +247,5 @@ export const useWorkflowStore = create<WorkflowState>((set, get) => ({
 
       setError("Execution failed");
     }
-  }
+  },
 }));
