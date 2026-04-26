@@ -13,7 +13,7 @@ import {
 import { getExecutionLevels } from "@/lib/execution/topologicalLevels";
 import { WorkflowRun, NodeExecution } from "@/types/workFlow";
 import { getUpstreamNodes } from "@/lib/execution/getUpstreamNodes";
-import { runAI } from "@/lib/integrations/ai";
+import { runAIRequest } from "@/lib/api/ai";
 
 type WorkflowState = {
   nodes: Node[];
@@ -197,7 +197,7 @@ export const useWorkflowStore = create<WorkflowState>((set, get) => ({
                   ?.map((d) => d?.text || "")
                   .join(" ");
 
-                output = await runAI(inputText || "Say something useful");
+                output = await runAIRequest(inputText || "Say something useful");
               }
 
               results[nodeId] = { output, text: output };

@@ -8,6 +8,9 @@ node_modules/
 *.log
 Thumbs.db
 
+.next
+client/.next
+
 # -----------------------------
 # CLIENT (Next.js)
 # -----------------------------

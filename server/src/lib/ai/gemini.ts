@@ -1,7 +1,14 @@
+const GEMINI_MODEL = "gemini-2.0-flash";
+
 export async function runGemini(prompt: string): Promise<string> {
+  const apiKey = process.env.GEMINI_API_KEY;
+
+  if (!apiKey) {
+    throw new Error("Missing GEMINI_API_KEY");
+  }
+
   const url =
-    "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=" +
-    process.env.NEXT_PUBLIC_GEMINI_API_KEY;
+    `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent?key=${apiKey}`;
 
   for (let attempt = 1; attempt <= 3; attempt++) {
     try {
@@ -17,6 +24,7 @@ export async function runGemini(prompt: string): Promise<string> {
 
       if (res.ok) {
         const data = await res.json();
+
         return (
           data?.candidates?.[0]?.content?.parts?.[0]?.text ||
           "[Empty Gemini response]"
@@ -24,14 +32,18 @@ export async function runGemini(prompt: string): Promise<string> {
       }
 
       const errText = await res.text();
-      console.warn(`Gemini attempt ${attempt} failed`, errText);
 
-      await new Promise((r) => setTimeout(r, 700 * attempt));
-    } catch (err) {
-      console.warn("Gemini network error:", err);
+      if (attempt === 3) {
+        throw new Error(`Gemini failed: ${errText}`);
+      }
+
+      await new Promise((resolve) => setTimeout(resolve, 700 * attempt));
+    } catch (error) {
+      if (attempt === 3) {
+        throw error;
+      }
     }
   }
 
-  // DON'T return → THROW
   throw new Error("Gemini failed after retries");
 }
