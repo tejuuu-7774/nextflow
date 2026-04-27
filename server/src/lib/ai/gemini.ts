@@ -1,16 +1,49 @@
-const GEMINI_MODEL = "gemini-2.0-flash";
+const DEFAULT_GEMINI_MODEL = "gemini-2.0-flash";
+const GEMINI_RETRY_COUNT = 3;
+const GEMINI_RETRY_DELAY_MS = 700;
 
-export async function runGemini(prompt: string): Promise<string> {
+type GeminiResponse = {
+  candidates?: Array<{
+    content?: {
+      parts?: Array<{
+        text?: string;
+      }>;
+    };
+  }>;
+};
+
+function getErrorMessage(error: unknown): string {
+  return error instanceof Error ? error.message : String(error);
+}
+
+function buildGeminiUrl(model: string, apiKey: string): string {
+  const encodedModel = encodeURIComponent(model);
+  const encodedApiKey = encodeURIComponent(apiKey);
+
+  return `https://generativelanguage.googleapis.com/v1beta/models/${encodedModel}:generateContent?key=${encodedApiKey}`;
+}
+
+function wait(ms: number): Promise<void> {
+  return new Promise((resolve) => {
+    setTimeout(resolve, ms);
+  });
+}
+
+export async function runGemini(
+  prompt: string,
+  model?: string
+): Promise<string> {
   const apiKey = process.env.GEMINI_API_KEY;
 
   if (!apiKey) {
     throw new Error("Missing GEMINI_API_KEY");
   }
 
-  const url =
-    `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent?key=${apiKey}`;
+  const selectedModel = model?.trim() || DEFAULT_GEMINI_MODEL;
+  const url = buildGeminiUrl(selectedModel, apiKey);
+  let lastError = "Gemini failed";
 
-  for (let attempt = 1; attempt <= 3; attempt++) {
+  for (let attempt = 1; attempt <= GEMINI_RETRY_COUNT; attempt += 1) {
     try {
       const res = await fetch(url, {
         method: "POST",
@@ -23,7 +56,7 @@ export async function runGemini(prompt: string): Promise<string> {
       });
 
       if (res.ok) {
-        const data = await res.json();
+        const data = (await res.json()) as GeminiResponse;
 
         return (
           data?.candidates?.[0]?.content?.parts?.[0]?.text ||
@@ -32,18 +65,23 @@ export async function runGemini(prompt: string): Promise<string> {
       }
 
       const errText = await res.text();
+      lastError = `Gemini failed with ${res.status}: ${errText}`;
 
-      if (attempt === 3) {
-        throw new Error(`Gemini failed: ${errText}`);
+      if (attempt === GEMINI_RETRY_COUNT) {
+        throw new Error(lastError);
       }
 
-      await new Promise((resolve) => setTimeout(resolve, 700 * attempt));
+      await wait(GEMINI_RETRY_DELAY_MS * attempt);
     } catch (error) {
-      if (attempt === 3) {
+      lastError = getErrorMessage(error);
+
+      if (attempt === GEMINI_RETRY_COUNT) {
         throw error;
       }
+
+      await wait(GEMINI_RETRY_DELAY_MS * attempt);
     }
   }
 
-  throw new Error("Gemini failed after retries");
+  throw new Error(lastError);
 }

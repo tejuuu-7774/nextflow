@@ -1,25 +1,26 @@
 import { Router } from "express";
-import { runGemini } from "../lib/ai/gemini";
-import { runGroq } from "../lib/ai/groq";
-import { runAI } from "../lib/ai/runAI";
+import { LLMProvider, runAI } from "../lib/integrations/ai";
 
 const router = Router();
 
 router.post("/run", async (req, res) => {
-  const { prompt, provider } = req.body ?? {};
+  const body = req.body as {
+    prompt?: unknown;
+    provider?: unknown;
+    model?: unknown;
+  };
+  const { prompt, provider, model } = body;
 
   if (typeof prompt !== "string" || !prompt.trim()) {
     return res.status(400).json({ error: "Prompt is required" });
   }
 
-  try {
-    const output =
-      provider === "gemini"
-        ? await runGemini(prompt)
-        : provider === "groq"
-          ? await runGroq(prompt)
-          : await runAI(prompt);
+  const selectedProvider: LLMProvider =
+    provider === "groq" || provider === "gemini" ? provider : "gemini";
+  const selectedModel = typeof model === "string" ? model : undefined;
 
+  try {
+    const output = await runAI(prompt, selectedProvider, selectedModel);
     return res.json({ output });
   } catch (error) {
     const message =

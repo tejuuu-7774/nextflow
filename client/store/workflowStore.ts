@@ -1,4 +1,9 @@
-import { NodeType, NodeData } from "@/types/nodeTypes";
+import {
+  DEFAULT_LLM_MODEL,
+  DEFAULT_LLM_PROVIDER,
+  NodeType,
+  NodeData,
+} from "@/types/nodeTypes";
 import { create } from "zustand";
 import {
   Node,
@@ -75,6 +80,17 @@ export const useWorkflowStore = create<WorkflowState>((set, get) => ({
   addNode: (type) => {
     const id = `${type}-${Date.now()}`;
 
+    const data: NodeData = {
+      label: type.toUpperCase(),
+      status: "idle",
+      ...(type === "llm"
+        ? {
+            llmProvider: DEFAULT_LLM_PROVIDER,
+            llmModel: DEFAULT_LLM_MODEL,
+          }
+        : {}),
+    };
+
     const newNode: Node = {
       id,
       type,
@@ -82,10 +98,7 @@ export const useWorkflowStore = create<WorkflowState>((set, get) => ({
         x: Math.random() * 400 + 100,
         y: Math.random() * 400 + 100,
       },
-      data: {
-        label: type.toUpperCase(),
-        status: "idle",
-      },
+      data,
     };
 
     set((state) => ({
@@ -189,6 +202,7 @@ export const useWorkflowStore = create<WorkflowState>((set, get) => ({
               }
 
               if (node.type === "llm") {
+                const nodeData = node.data as NodeData;
                 const inputs = filteredEdges
                   .filter((e) => e.target === nodeId)
                   .map((e) => results[e.source]);
@@ -197,7 +211,19 @@ export const useWorkflowStore = create<WorkflowState>((set, get) => ({
                   ?.map((d) => d?.text || "")
                   .join(" ");
 
-                output = await runAIRequest(inputText || "Say something useful");
+                const prompt = [
+                  nodeData.system,
+                  inputText,
+                  nodeData.user,
+                ]
+                  .filter((part): part is string => Boolean(part?.trim()))
+                  .join("\n\n");
+
+                output = await runAIRequest(
+                  prompt || "Say something useful",
+                  nodeData.llmProvider ?? DEFAULT_LLM_PROVIDER,
+                  nodeData.llmModel ?? DEFAULT_LLM_MODEL
+                );
               }
 
               results[nodeId] = { output, text: output };
