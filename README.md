@@ -1,144 +1,207 @@
-NextFlow
+# NextFlow
 
-NextFlow is a full-stack AI workflow builder that enables users to design, manage, and execute AI-powered workflows through a visual interface. It provides a structured way to connect prompts, models, and logic into reusable workflows, making AI interactions more organized, repeatable, and scalable.
+NextFlow is a full-stack AI workflow builder that allows users to visually create, manage, and execute AI-powered workflows. It provides a node-based interface where users can design workflows, connect components, and run them using modern LLM APIs.
 
-Overview
+The application focuses on simplicity, modularity, and real-time interaction, enabling users to experiment with AI pipelines without dealing with backend complexity.
 
-Modern AI tools are powerful but often fragmented—users repeatedly write prompts, switch between models, and lose context. NextFlow solves this by introducing a workflow-based approach where AI interactions can be visually composed, saved, and reused.
+---
 
-The platform allows users to create workflows, define their structure, and execute them using integrated AI models such as Google's Gemini and Groq APIs.
+## Features
 
-Features
-Workflow Management
-Create and name workflows
-Load and switch between saved workflows
-Delete workflows with proper state handling
-Persistent storage of workflow structure (nodes and edges)
-Visual Builder
-Node-based workflow design using a drag-and-drop interface
-Dynamic connection of steps within a workflow
-Real-time updates to workflow structure
-AI Integration
-Integration with Gemini (Google Generative AI)
-Integration with Groq (fallback for reliability and free-tier usage)
-Structured execution of AI-driven workflows
-State Management
-Centralized workflow state using a global store
-Automatic UI updates without page reloads
-Reset of builder state upon workflow deletion
-Error Handling
-Inline error messaging for better user experience
-Graceful handling of API failures
-Loading and disabled states for user actions
-Tech Stack
-Frontend
-Next.js (App Router)
-React
-Tailwind CSS
-React Flow (for workflow visualization)
-Backend
-Node.js
-Express.js
-Prisma ORM
-Database
-PostgreSQL (via Prisma)
-AI Services
-Gemini API (Google Generative AI)
-Groq API
-Project Structure
+### Core Functionality
+- Create and manage workflows
+- Visual workflow builder using node-based architecture
+- Select and configure AI models (Gemini, Groq, etc.)
+- Save and load workflows from database
+- Delete workflows with safe relational handling
+- Execute workflows end-to-end
+
+### UI/UX
+- Clean and minimal dark-themed interface
+- Real-time updates without page reloads
+- Inline error handling (no intrusive alerts)
+- Loading states for async operations
+- Smooth workflow selection and switching
+
+### Data Handling
+- Persistent storage using Prisma ORM
+- Safe deletion using transactional queries
+- Structured workflow storage (nodes + edges)
+
+---
+
+## Tech Stack
+
+### Frontend
+- Next.js (App Router)
+- TypeScript
+- React Flow (for visual builder)
+- Tailwind CSS
+
+### Backend
+- Node.js
+- Express.js
+- Prisma ORM
+
+### Database
+- PostgreSQL / MySQL (via Prisma)
+
+### AI Integration
+- Google Gemini API
+- Groq API (fallback / alternative)
+
+---
+
+## Project Structure
 nextflow/
 │
-├── client/                  # Frontend (Next.js)
-│   ├── app/
-│   ├── components/
-│   ├── lib/api/
-│   └── store/
+├── client/ # Frontend (Next.js)
+│ ├── app/ # App Router pages
+│ ├── components/ # UI components (Sidebar, Builder, etc.)
+│ ├── lib/ # API utilities
+│ └── store/ # State management (Zustand or equivalent)
 │
-├── server/                  # Backend (Express + Prisma)
-│   ├── src/routes/
-│   ├── prisma/
-│   └── index.ts
+├── server/ # Backend (Express + Prisma)
+│ ├── src/
+│ │ ├── routes/ # API routes (workflowRoutes.ts)
+│ │ ├── controllers/ # Business logic (if separated)
+│ │ └── prisma/ # Prisma client setup
+│ ├── prisma/
+│ │ └── schema.prisma # Database schema
 │
 └── README.md
-Installation and Setup
-Prerequisites
-Node.js (v18 or higher)
-npm or yarn
-PostgreSQL database
-1. Clone the repository
-git clone <your-repo-url>
-cd nextflow
-2. Backend Setup
-cd server
-npm install
 
-Create a .env file:
 
-DATABASE_URL=your_database_url
-PORT=3001
+---
 
-Run migrations:
+## Architecture Overview
 
-npx prisma migrate dev
+NextFlow follows a clear separation of concerns between frontend and backend.
 
-Start the backend server:
+### Frontend Layer
+- Built using Next.js with client-side interactivity
+- React Flow manages node-based workflow visualization
+- Global state is handled via a lightweight store
+- API layer abstracts backend communication
 
-npm run dev
-3. Frontend Setup
-cd client
-npm install
+### Backend Layer
+- Express server exposes REST APIs
+- Prisma ORM handles database operations
+- Routes are modular and focused on specific entities (e.g., workflows)
 
-Create a .env.local file:
+### Data Flow
 
+1. User creates or edits a workflow in the UI
+2. Frontend updates local state (nodes, edges)
+3. On save, data is sent to backend via API
+4. Backend validates and persists data using Prisma
+5. On fetch, workflows are loaded and rendered in UI
+
+### Deletion Flow (Important)
+
+- User triggers delete from sidebar
+- Frontend sends DELETE request to `/api/workflows/:id`
+- Backend:
+  - Validates workflow existence
+  - Deletes related records (e.g., workflowRun)
+  - Deletes workflow inside a transaction
+- Frontend updates state without reload
+
+This ensures data consistency and prevents orphan records.
+
+---
+
+## API Endpoints
+
+### Workflows
+
+- `GET /api/workflows`  
+  Fetch all workflows
+
+- `POST /api/workflows`  
+  Create a new workflow
+
+- `PUT /api/workflows/:id`  
+  Update an existing workflow
+
+- `DELETE /api/workflows/:id`  
+  Delete a workflow (with relational cleanup)
+
+---
+
+## Environment Variables
+
+### Client (`.env.local`)
 NEXT_PUBLIC_API_URL=http://localhost:3001
 
-Start the frontend:
 
-npm run dev
-API Endpoints
-Workflows
-GET /api/workflows
-Fetch all workflows
-POST /api/workflows
-Create a new workflow
-PUT /api/workflows/:id
-Update an existing workflow
-DELETE /api/workflows/:id
-Delete a workflow and its associated data
+### Server (`.env`)
+
+DATABASE_URL=your_database_url
+GEMINI_API_KEY=your_key
+GROQ_API_KEY=your_key
+
+
+---
+
+## Installation & Setup
+
+### 1. Clone the repository
+```bash
+git clone <your-repo-url>
+cd nextflow
+2. Setup Backend
+    cd server
+    npm install
+    npx prisma generate
+    npx prisma migrate dev
+    npm run dev
+3. Setup Frontend
+    cd client
+    npm install
+    npm run dev
+    Running the Application
+    Frontend: http://localhost:3000
+    Backend: http://localhost:3001
+
 Key Design Decisions
-1. Workflow-Centric Architecture
+1. Node-Based Workflow Builder
+    React Flow is used to provide a flexible and scalable visual interface for building workflows.
 
-Instead of treating prompts as isolated inputs, NextFlow structures them into workflows, enabling reuse and better organization.
+2. Prisma ORM
 
-2. Transaction-Safe Deletion
+    Chosen for:
 
-Workflow deletion is handled using database transactions to ensure:
+    Type safety
+    Clean schema management
+    Easy relational queries
+3. Transactional Deletion
 
-Related records are deleted first
-No orphaned data remains
-System consistency is maintained
-3. Minimal and Functional UI
+    Workflow deletion uses Prisma transactions to:
 
-The interface prioritizes clarity and usability over visual complexity, ensuring a smooth user experience for workflow management.
+    Remove dependent records
+    Maintain database integrity
+    Prevent partial deletes
+4. Minimal UI Philosophy
 
-4. Separation of Concerns
-Frontend handles UI and state
-Backend manages data and business logic
-API layer acts as a clean interface between both
-Future Improvements
-Workflow duplication
-Versioning and history tracking
-Collaborative workflows
-Advanced node types (conditions, loops)
-Execution logs and analytics
-Deployment and sharing of workflows
-Deployment
+    The UI avoids unnecessary styling and focuses on:
 
-The project is structured to support independent deployment:
+    clarity
+    speed
+    usability
+    Future Improvements
+    Workflow duplication
+    Version history for workflows
+    Execution logs and analytics
+    Drag-and-drop enhancements
+    Authentication and multi-user support
+    Conclusion
 
-Frontend: Vercel
-Backend: Render / Railway
-Database: Managed PostgreSQL (e.g., Supabase, Neon)
-Conclusion
+    NextFlow demonstrates a complete full-stack system integrating:
 
-NextFlow transforms how users interact with AI by introducing structure, reusability, and clarity through workflows. It bridges the gap between raw prompt usage and scalable AI systems, making it easier to build, manage, and execute intelligent processes.
+    modern frontend architecture
+    robust backend design
+    real-world database handling
+    AI workflow execution
+
+It is built with a focus on clean structure, scalability, and practical usability.
