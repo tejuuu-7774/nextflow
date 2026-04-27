@@ -4,7 +4,7 @@ import { useWorkflowStore } from "@/store/workflowStore";
 import { NodeType } from "@/types/nodeTypes";
 import { Node, Edge } from "reactflow";
 import { useEffect, useState } from "react";
-import { getWorkflows } from "@/lib/api/workflow";
+import { deleteWorkflow, getWorkflows } from "@/lib/api/workflow";
 
 const nodeList: { label: string; type: NodeType }[] = [
   { label: "Text", type: "text" },
@@ -52,9 +52,14 @@ export default function Sidebar() {
   const runWorkflow = useWorkflowStore((s) => s.runWorkflow);
   const error = useWorkflowStore((s) => s.error);
   const selectedNodeId = useWorkflowStore((s) => s.selectedNodeId);
+  const currentWorkflowId = useWorkflowStore((s) => s.currentWorkflowId);
 
   const [workflows, setWorkflows] = useState<Workflow[]>([]);
   const [workflowName, setWorkflowName] = useState("");
+  const [deletingWorkflowId, setDeletingWorkflowId] = useState<string | null>(
+    null
+  );
+  const [deleteError, setDeleteError] = useState<string | null>(null);
 
   useEffect(() => {
     getWorkflows()
@@ -97,37 +102,82 @@ export default function Sidebar() {
     }
   };
 
+  const handleDeleteWorkflow = async () => {
+    if (!currentWorkflowId) return;
+
+    const confirmed = window.confirm("Delete this workflow?");
+    if (!confirmed) return;
+
+    try {
+      setDeleteError(null);
+      setDeletingWorkflowId(currentWorkflowId);
+      await deleteWorkflow(currentWorkflowId);
+      setDeleteError(null);
+      setWorkflows((prev) =>
+        prev.filter((workflow) => workflow.id !== currentWorkflowId)
+      );
+      useWorkflowStore.setState({
+        currentWorkflowId: null,
+        nodes: [],
+        edges: [],
+      });
+    } catch (err) {
+      console.error("Delete failed:", err);
+      setDeleteError("Failed to delete workflow. Try again.");
+    } finally {
+      setDeletingWorkflowId(null);
+    }
+  };
+
   return (
     <aside className="w-64 h-full shrink-0 border-r border-gray-800 bg-[#111] p-4">
       <h2 className="text-lg font-semibold mb-4">Nodes</h2>
 
       <div className="space-y-2">
 
-        <select
-          onChange={(e) => {
-            const selected = workflows.find(
-              (w) => w.id === e.target.value
-            );
-            if (!selected) return;
+        <div className="flex gap-2 mb-4">
+          <select
+            value={currentWorkflowId || ""}
+            onChange={(e) => {
+              setDeleteError(null);
+              const selected = workflows.find(
+                (w) => w.id === e.target.value
+              );
+              if (!selected) return;
 
-            const { setWorkflowId } = useWorkflowStore.getState();
+              const { setWorkflowId } = useWorkflowStore.getState();
 
-            setWorkflowId(selected.id);
+              setWorkflowId(selected.id);
 
-            useWorkflowStore.setState({
-              nodes: selected.nodes,
-              edges: selected.edges,
-            });
-          }}
-          className="w-full mb-4 bg-gray-800 p-2 rounded"
-        >
-          <option value="">Select Workflow</option>
-          {workflows.map((wf) => (
-            <option key={wf.id} value={wf.id}>
-              {wf.name}
-            </option>
-          ))}
-        </select>
+              useWorkflowStore.setState({
+                nodes: selected.nodes,
+                edges: selected.edges,
+              });
+            }}
+            className="min-w-0 flex-1 bg-gray-800 p-2 rounded"
+          >
+            <option value="">Select Workflow</option>
+            {workflows.map((wf) => (
+              <option key={wf.id} value={wf.id}>
+                {wf.name}
+              </option>
+            ))}
+          </select>
+          <button
+            type="button"
+            onClick={handleDeleteWorkflow}
+            disabled={!currentWorkflowId || Boolean(deletingWorkflowId)}
+            title="Delete workflow"
+            className="px-2 text-xs text-red-400 hover:text-red-300 disabled:cursor-not-allowed disabled:text-gray-600"
+          >
+            {deletingWorkflowId ? "Deleting..." : "Delete"}
+          </button>
+        </div>
+        {deleteError && (
+          <p className="text-xs text-red-400 mt-1">
+            {deleteError}
+          </p>
+        )}
 
         <input
           type="text"
